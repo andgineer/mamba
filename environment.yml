@@ -1,0 +1,14 @@
+name: mamba
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - boto3
+  - numpy
+  - pandas
+  - requests
+  - scikit-learn
+  - pyyaml
+  - pip
+  - pip:
+    - pyarrow
