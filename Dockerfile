@@ -1,7 +1,5 @@
 FROM continuumio/miniconda3
 
-ARG PYTHON_VERSION
-
 # set build-time proxy settings from --build-args if specified
 ARG NO_PROXY
 ARG HTTP_PROXY
@@ -18,14 +16,20 @@ RUN useradd -ms /bin/bash mamba-user \
     && chown -R mamba-user /opt/conda
 
 USER mamba-user
-COPY --chown=mamba-user environment.yml /envs/
 
 # miniconda image setup /home/root/.bashrc , but we should repeat that for mamba-user
 RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
     && echo "source activate ${DOCKER_CONTAINER_CONDA_ENV_NAME}" >> ~/.bashrc \
     && /opt/conda/bin/conda install mamba --name base -c conda-forge \
-    && /opt/conda/bin/conda info --envs \
-    && /opt/conda/bin/mamba env create --file /envs/environment.yml python=${PYTHON_VERSION} \
+    && /opt/conda/bin/conda info --envs
+
+COPY --chown=mamba-user environment.yml /envs/
+ARG PYTHON_VERSION
+# Separate layer to optimize builds for different Python versions
+RUN CONDA_PYTHON_ARG="python="${PYTHON_VERSION:-$(conda search python | awk 'END {print $2}')} \
+    && echo ${CONDA_PYTHON_ARG} \
+    && sed -i -e "s/python=?/${CONDA_PYTHON_ARG}/g" /envs/environment.yml \
+    && /opt/conda/bin/mamba env create --file /envs/environment.yml \
     && /opt/conda/bin/conda info --envs \
     && export CONDA_DEFAULT_ENV="$(head -1 /envs/environment.yml | cut -d' ' -f2)" \
     && echo export CONDA_DEFAULT_ENV="${CONDA_DEFAULT_ENV}" >> ~/.bashrc \

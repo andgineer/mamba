@@ -46,7 +46,6 @@ jobs:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
-
       - name: Build and push for Python 3.9
         uses: docker/build-push-action@v2
         with:
@@ -55,6 +54,18 @@ jobs:
           build-args: PYTHON_VERSION=3.9
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.9
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Build and push for latest Anaconda Python compatible with Pandas
+        uses: docker/build-push-action@v2
+        with:
+          context: ./
+          file: ./Dockerfile
+          # Pandas is not yet compatible with Python 3.10
+          build-args: PYTHON_VERSION=3.9
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mamba:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
