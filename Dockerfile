@@ -24,7 +24,6 @@ COPY --chown=mamba-user environment.yml /envs/
 RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
     && echo "source activate ${DOCKER_CONTAINER_CONDA_ENV_NAME}" >> ~/.bashrc \
     && /opt/conda/bin/conda install mamba --name base -c conda-forge \
-    && sed ${PYTHON_VERSION} /envs/environment.yml
     && /opt/conda/bin/conda info --envs \
     && /opt/conda/bin/mamba env create --file /envs/environment.yml \
     && /opt/conda/bin/conda info --envs \
