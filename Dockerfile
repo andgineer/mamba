@@ -25,7 +25,7 @@ RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
     && echo "source activate ${DOCKER_CONTAINER_CONDA_ENV_NAME}" >> ~/.bashrc \
     && /opt/conda/bin/conda install mamba --name base -c conda-forge \
     && /opt/conda/bin/conda info --envs \
-    && /opt/conda/bin/mamba env create --file /envs/environment.yml \
+    && /opt/conda/bin/mamba env create --file /envs/environment.yml python=${PYTHON_VERSION} \
     && /opt/conda/bin/conda info --envs \
     && export CONDA_DEFAULT_ENV="$(head -1 /envs/environment.yml | cut -d' ' -f2)" \
     && echo export CONDA_DEFAULT_ENV="${CONDA_DEFAULT_ENV}" >> ~/.bashrc \
