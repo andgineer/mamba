@@ -1,3 +1,5 @@
+[![Docker Automated build](https://img.shields.io/docker/image-size/andgineer/amamba)](https://hub.docker.com/r/andgineer/mamba)
+
 # Fast scientific Anaconda Docker image
 
 Ultra fast C++ conda(anaconda) replacement [mamba](https://github.com/mamba-org/mamba).
