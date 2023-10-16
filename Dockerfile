@@ -18,7 +18,8 @@ RUN useradd -ms /bin/bash mamba-user \
 USER mamba-user
 
 # miniconda image setup /home/root/.bashrc , but we should repeat that for mamba-user
-RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
+RUN /opt/conda/bin/conda install libarchive --name base -c conda-forge\
+    && echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
     && echo "source activate ${DOCKER_CONTAINER_CONDA_ENV_NAME}" >> ~/.bashrc \
     && /opt/conda/bin/conda install mamba --name base -c conda-forge \
     && /opt/conda/bin/conda info --envs
