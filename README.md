@@ -1,4 +1,4 @@
-[![Docker Automated build](https://img.shields.io/docker/image-size/andgineer/amamba)](https://hub.docker.com/r/andgineer/mamba)
+[![Docker Automated build](https://img.shields.io/docker/image-size/andgineer/mamba)](https://hub.docker.com/r/andgineer/mamba)
 
 # Fast scientific Anaconda Docker image
 
@@ -14,4 +14,5 @@ The container use non-root user so it is safe to run in production environment.
 | 3.9    | Python 3.9                                    |
 | 3.10   | Python 3.10                                   |
 | 3.11   | Python 3.11                                   |
+| 3.12   | Python 3.12                                   |
 | latest | latest Anaconda Python compatible with Pandas |

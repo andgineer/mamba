@@ -1,4 +1,5 @@
-FROM continuumio/miniconda3
+FROM continuumio/miniconda3:23.3.1-0
+# pinned miniconda version as workaround before libarchive 3.8: https://github.com/conda/conda-libmamba-solver/issues/283
 
 # set build-time proxy settings from --build-args if specified
 ARG NO_PROXY
@@ -18,8 +19,7 @@ RUN useradd -ms /bin/bash mamba-user \
 USER mamba-user
 
 # miniconda image setup /home/root/.bashrc , but we should repeat that for mamba-user
-RUN /opt/conda/bin/conda install libarchive --name base -c conda-forge\
-    && echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
+RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
     && echo "source activate ${DOCKER_CONTAINER_CONDA_ENV_NAME}" >> ~/.bashrc \
     && /opt/conda/bin/conda install mamba --name base -c conda-forge \
     && /opt/conda/bin/conda info --envs
