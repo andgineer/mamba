@@ -1,22 +1,26 @@
 [![Docker Automated build](https://img.shields.io/docker/image-size/andgineer/mamba)](https://hub.docker.com/r/andgineer/mamba)
 
-# Fast scientific Anaconda Docker image
+## Fast Scientific Anaconda/Mamba Docker Container
+This [Docker image](https://hub.docker.com/r/andgineer/mamba) provides a lightweight scientific Python environment 
+based on [Mamba](https://github.com/mamba-org/mamba), 
+a fast, robust C++ reimplementation of the Conda package manager.
 
-Ultra fast C++ conda(anaconda) replacement [mamba](https://github.com/mamba-org/mamba).
+### Features
 
-[The container](https://hub.docker.com/r/andgineer/mamba) use non-root user so it is safe to run in production environment.
+- Built on Mamba for significantly faster package management compared to Conda
+- Non-root user setup for enhanced security in production environments
+- Compatible with the Anaconda package ecosystem
+- Optimized for scientific computing with Python
 
 ### Usage
 
     docker run --rm -it andgineer/mamba python --version
 
-### Tags
+### Available Tags
 
-| Tag    | Description                                   
-|--------|-----------------------------------------------|
-| 3.8    | Python 3.8                                    |
-| 3.9    | Python 3.9                                    |
-| 3.10   | Python 3.10                                   |
-| 3.11   | Python 3.11                                   |
-| 3.12   | Python 3.12                                   |
-| latest | latest Anaconda Python compatible with Pandas |
+- latest: Latest stable Anaconda Python version compatible with Pandas
+- 3.x: Specific Python version tags (e.g., 3.9, 3.10)
+
+### Security
+The container runs as a non-root user by default, making it suitable for production environments and 
+following security best practices.
