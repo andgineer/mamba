@@ -22,7 +22,7 @@ RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
     && echo "source activate ${DOCKER_CONTAINER_CONDA_ENV_NAME}" >> ~/.bashrc
 
 # update all packages to ensure libarchive from the same channel as mamba
-RUN conda config --remove channels defaults \
+RUN conda config --remove channels defaults || true \
     && conda config --add channels conda-forge \
     && conda update --all \
     && /opt/conda/bin/conda install mamba --name base \
