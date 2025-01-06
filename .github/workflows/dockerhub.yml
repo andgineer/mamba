@@ -29,17 +29,6 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Build and push to docker hub for Python 3.11
-        uses: docker/build-push-action@v5
-        with:
-          context: ./
-          file: ./Dockerfile
-          build-args: PYTHON_VERSION=3.11
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.11
-          cache-from: type=registry,ref=user/app:latest
-          cache-to: type=inline
-
       - name: Build and push to docker hub for Python 3.12
         uses: docker/build-push-action@v5
         with:
@@ -47,7 +36,18 @@ jobs:
           file: ./Dockerfile
           build-args: PYTHON_VERSION=3.12
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.12,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.12
+          cache-from: type=registry,ref=user/app:latest
+          cache-to: type=inline
+
+      - name: Build and push to docker hub for Python 3.13
+        uses: docker/build-push-action@v5
+        with:
+          context: ./
+          file: ./Dockerfile
+          build-args: PYTHON_VERSION=3.13
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.13,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:latest
           cache-from: type=registry,ref=user/app:latest
           cache-to: type=inline
           platforms: |-
