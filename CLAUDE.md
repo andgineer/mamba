@@ -41,7 +41,12 @@ docker run --rm -it mamba python --version
 ```
 
 ### CI/CD
-The project uses GitHub Actions to automatically build and push images for Python 3.12 and 3.13 to Docker Hub when changes are pushed to the master branch.
+The project uses GitHub Actions to automatically:
+- Build and push images for Python 3.12 and 3.13 to Docker Hub when changes are pushed to the master branch
+- Create GitHub releases tagged with the Mamba version (e.g., `mamba-1.5.8`)
+- Generate multiple Docker tags including version-specific tags (e.g., `mamba-1.5.8`, `mamba-1.5.8-py3.12`, `mamba-1.5.8-py3.13`)
+- Support manual workflow dispatch to trigger builds
+- Handle git tag-based releases for custom versioning
 
 ## Environment Configuration
 
@@ -55,4 +60,9 @@ The conda environment is defined in `environment.yml` and includes:
 
 - `latest`: Python 3.13 (current default)
 - `3.12`, `3.13`: Specific Python versions
+- `mamba-X.Y.Z`: Latest Python with specific Mamba version
+- `mamba-X.Y.Z-py3.12`, `mamba-X.Y.Z-py3.13`: Python version with specific Mamba version
+- `vX.Y.Z`: Custom release tags when pushed as git tags
 - Images are built for both linux/amd64 and linux/arm64 platforms
+
+The workflow automatically detects the Mamba version during build and creates appropriate tags and GitHub releases.

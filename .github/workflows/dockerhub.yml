@@ -5,8 +5,18 @@ name: dockerhub
 on:
   push:
     branches: [ master ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      mamba_version:
+        description: 'Mamba version to use for release'
+        required: false
+        type: string
+
+env:
+  DEFAULT_MAMBA_VERSION: 'latest'
 
 jobs:
   build:
@@ -24,10 +34,42 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Get Mamba version
+        id: mamba_version
+        run: |
+          # Build a temporary image to get mamba version
+          docker build -t temp-mamba --build-arg PYTHON_VERSION=3.13 .
+          MAMBA_VERSION=$(docker run --rm temp-mamba mamba --version | head -1 | awk '{print $2}')
+          docker rmi temp-mamba
+          echo "version=${MAMBA_VERSION}" >> $GITHUB_OUTPUT
+          echo "Detected Mamba version: ${MAMBA_VERSION}"
+
+      - name: Generate tags
+        id: tags
+        run: |
+          MAMBA_VERSION=${{ steps.mamba_version.outputs.version }}
+          TAGS_312="${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.12"
+          TAGS_313="${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.13,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:latest"
+          
+          # Add mamba version tags
+          TAGS_312="${TAGS_312},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:mamba-${MAMBA_VERSION}-py3.12"
+          TAGS_313="${TAGS_313},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:mamba-${MAMBA_VERSION}-py3.13,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:mamba-${MAMBA_VERSION}"
+          
+          # Add git tag if this is a tagged release
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            TAGS_312="${TAGS_312},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${TAG_NAME}-py3.12"
+            TAGS_313="${TAGS_313},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${TAG_NAME}-py3.13,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${TAG_NAME}"
+          fi
+          
+          echo "tags_312=${TAGS_312}" >> $GITHUB_OUTPUT
+          echo "tags_313=${TAGS_313}" >> $GITHUB_OUTPUT
 
       - name: Build and push to docker hub for Python 3.12
         uses: docker/build-push-action@v5
@@ -35,24 +77,48 @@ jobs:
           context: ./
           file: ./Dockerfile
           build-args: PYTHON_VERSION=3.12
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.12
-          cache-from: type=registry,ref=user/app:latest
-          cache-to: type=inline
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.tags.outputs.tags_312 }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push to docker hub for Python 3.13
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ./
           file: ./Dockerfile
           build-args: PYTHON_VERSION=3.13
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.13,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:latest
-          cache-from: type=registry,ref=user/app:latest
-          cache-to: type=inline
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.tags.outputs.tags_313 }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           platforms: |-
             linux/amd64
             linux/arm64
 
       - name: Image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+        if: github.event_name != 'pull_request'
+        run: echo ${{ steps.build.outputs.digest }}
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: mamba-${{ steps.mamba_version.outputs.version }}
+          release_name: Release mamba-${{ steps.mamba_version.outputs.version }}
+          body: |
+            Release for Mamba version ${{ steps.mamba_version.outputs.version }}
+            
+            Docker Images:
+            - https://hub.docker.com/r/andgineer/mamba/tags?page=&page_size=&ordering=&name=mamba-${{ steps.mamba_version.outputs.version }}
+            
+            Available tags:
+            - `mamba-${{ steps.mamba_version.outputs.version }}` (Python 3.13, latest)
+            - `mamba-${{ steps.mamba_version.outputs.version }}-py3.13` (Python 3.13)
+            - `mamba-${{ steps.mamba_version.outputs.version }}-py3.12` (Python 3.12)
+          draft: false
+          prerelease: false
