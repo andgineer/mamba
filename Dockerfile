@@ -21,10 +21,11 @@ USER mamba-user
 RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
     && echo "source activate ${DOCKER_CONTAINER_CONDA_ENV_NAME}" >> ~/.bashrc
 
-# Accept conda Terms of Service and update all packages to ensure libarchive from the same channel as mamba
-RUN conda config --remove channels defaults || true \
+# Accept conda Terms of Service for all channels and update all packages to ensure libarchive from the same channel as mamba
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main \
+    && conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r \
+    && conda config --remove channels defaults || true \
     && conda config --add channels conda-forge \
-    && conda tos accept --override-channels --channel conda-forge \
     && conda update --all \
     && /opt/conda/bin/conda install mamba --name base \
     && /opt/conda/bin/conda info --envs \
