@@ -21,22 +21,24 @@ USER mamba-user
 RUN echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc \
     && echo "source activate ${DOCKER_CONTAINER_CONDA_ENV_NAME}" >> ~/.bashrc
 
-# Set environment variable to automatically accept conda ToS and configure channels
-ENV CONDA_TERMS_ACCEPTED=yes
-
-# Remove defaults channel and use only conda-forge to avoid ToS issues
-RUN conda config --remove channels defaults || true \
-    && conda config --add channels conda-forge \
-    && conda config --set channel_priority strict \
-    && conda update --all -c conda-forge \
-    && /opt/conda/bin/conda install mamba -c conda-forge --name base \
+# Accept ToS by creating the necessary file manually and configure channels
+RUN mkdir -p ~/.conda \
+    && echo "channels:" > ~/.conda/.condarc \
+    && echo "  - conda-forge" >> ~/.conda/.condarc \
+    && echo "channel_priority: strict" >> ~/.conda/.condarc \
+    && conda config --system --set auto_update_conda false \
+    && conda config --system --remove channels defaults || true \
+    && conda config --system --add channels conda-forge \
+    && conda config --system --set channel_priority strict \
+    && echo "yes" | conda update --all \
+    && echo "yes" | conda install mamba --name base \
     && /opt/conda/bin/conda info --envs \
     && conda list
 
 COPY --chown=mamba-user environment.yml /envs/
 ARG PYTHON_VERSION
 # Separate layer to optimize builds for different Python versions
-RUN CONDA_PYTHON_ARG="python="${PYTHON_VERSION:-$(conda search python | awk 'END {print $2}')} \
+RUN CONDA_PYTHON_ARG="python="${PYTHON_VERSION:-$(conda search python | grep -E "python\s+3\.(1[0-3])\.[0-9]+\s" | grep -v rc | grep -v alpha | grep -v beta | tail -1 | awk '{print $2}')} \
     && echo ${CONDA_PYTHON_ARG} \
     && sed -i -e "s/python=?/${CONDA_PYTHON_ARG}/g" /envs/environment.yml \
     && /opt/conda/bin/mamba env create --file /envs/environment.yml \
