@@ -40,20 +40,31 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
+      - name: Build image for version detection
+        id: version_build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./
+          file: ./Dockerfile
+          build-args: PYTHON_VERSION=3.13
+          push: false
+          tags: temp-mamba:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
       - name: Get Mamba version
         id: mamba_version
         run: |
-          # Build a temporary image to get mamba version
-          docker build -t temp-mamba --build-arg PYTHON_VERSION=3.13 .
-          MAMBA_VERSION=$(docker run --rm temp-mamba bash -c "/opt/conda/bin/mamba --version 2>/dev/null")
+          MAMBA_VERSION=$(docker run --rm temp-mamba:latest bash -c "/opt/conda/bin/mamba --version 2>/dev/null")
           if [ -z "$MAMBA_VERSION" ]; then
-            MAMBA_VERSION=$(docker run --rm temp-mamba bash -c "conda list mamba" | grep "^mamba " | awk '{print $2}' | head -1)
+            MAMBA_VERSION=$(docker run --rm temp-mamba:latest bash -c "conda list mamba" | grep "^mamba " | awk '{print $2}' | head -1)
           fi
           if [ -z "$MAMBA_VERSION" ]; then
             MAMBA_VERSION="0.0.0"
             echo "Warning: Could not detect Mamba version, using default: ${MAMBA_VERSION}"
           fi
-          docker rmi temp-mamba
+          docker rmi temp-mamba:latest
           echo "version=${MAMBA_VERSION}" >> $GITHUB_OUTPUT
           echo "Detected Mamba version: ${MAMBA_VERSION}"
 
