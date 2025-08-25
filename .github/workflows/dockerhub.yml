@@ -45,13 +45,14 @@ jobs:
         run: |
           # Build a temporary image to get mamba version
           docker build -t temp-mamba --build-arg PYTHON_VERSION=3.13 .
-          MAMBA_VERSION=$(docker run --rm temp-mamba bash -c "/opt/conda/bin/mamba --version 2>/dev/null || /opt/conda/bin/mamba version 2>/dev/null || echo ''" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-          # If still empty, try conda list
+          MAMBA_VERSION=$(docker run --rm temp-mamba bash -c "/opt/conda/bin/mamba --version 2>/dev/null")
           if [ -z "$MAMBA_VERSION" ]; then
             MAMBA_VERSION=$(docker run --rm temp-mamba bash -c "conda list mamba" | grep "^mamba " | awk '{print $2}' | head -1)
           fi
-          MAMBA_VERSION="0.0.0"
-          echo "Warning: Could not detect Mamba version, using default: ${MAMBA_VERSION}"
+          if [ -z "$MAMBA_VERSION" ]; then
+            MAMBA_VERSION="0.0.0"
+            echo "Warning: Could not detect Mamba version, using default: ${MAMBA_VERSION}"
+          fi
           docker rmi temp-mamba
           echo "version=${MAMBA_VERSION}" >> $GITHUB_OUTPUT
           echo "Detected Mamba version: ${MAMBA_VERSION}"
