@@ -73,7 +73,7 @@ jobs:
           
           # Save version info for release
           mkdir -p /tmp/versions
-          echo "Python ${{ matrix.python_version }}: ${MAMBA_VERSION}" >> /tmp/versions/info.txt
+          echo "Python ${{ matrix.python_version }}: ${MAMBA_VERSION}" > /tmp/versions/info-${{ matrix.python_version }}.txt
 
 
       - name: Generate tags
@@ -133,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: versions-${{ matrix.python_version }}
-          path: /tmp/versions/info.txt
+          path: /tmp/versions/info-${{ matrix.python_version }}.txt
 
   create-release:
     needs: build
@@ -154,8 +154,8 @@ jobs:
       - name: Generate release tag
         id: generate_release_tag
         run: |
-          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
-          echo "tag=release-${TIMESTAMP}" >> $GITHUB_OUTPUT
+          TIMESTAMP=$(date -u +"%Y-%m-%d/%H:%M:%S")
+          echo "tag=${TIMESTAMP}" >> $GITHUB_OUTPUT
           echo "Generated release tag: release-${TIMESTAMP}"
 
       - name: Check if release exists
@@ -179,7 +179,7 @@ jobs:
             echo "Docker Images built on $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
             echo ""
             echo "Mamba Versions:"
-            cat /tmp/all-versions/info.txt
+            cat /tmp/all-versions/info-*.txt
             echo ""
             echo "Docker Hub: https://hub.docker.com/r/andgineer/mamba/tags?page=1&page_size=25&ordering=last_updated"
           } > release_body.txt
