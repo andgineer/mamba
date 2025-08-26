@@ -154,9 +154,9 @@ jobs:
       - name: Generate release tag
         id: generate_release_tag
         run: |
-          TIMESTAMP=$(date -u +"%Y-%m-%d/%H:%M:%S")
+          TIMESTAMP=$(date -u +"%Y-%m-%d-%H%M%S")
           echo "tag=${TIMESTAMP}" >> $GITHUB_OUTPUT
-          echo "Generated release tag: release-${TIMESTAMP}"
+          echo "Generated release tag: ${TIMESTAMP}"
 
       - name: Check if release exists
         id: check_release
@@ -192,7 +192,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.generate_release_tag.outputs.tag }}
-          release_name: Release ${{ steps.generate_release_tag.outputs.tag }}
+          release_name: ${{ steps.generate_release_tag.outputs.tag }}
           body_path: release_body.txt
           draft: false
           prerelease: false
