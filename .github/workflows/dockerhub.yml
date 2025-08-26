@@ -172,6 +172,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Create release body
+        id: create_body
+        run: |
+          {
+            echo "Docker Images built on $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+            echo ""
+            echo "Mamba Versions:"
+            cat /tmp/all-versions/info.txt
+            echo ""
+            echo "Docker Hub: https://hub.docker.com/r/andgineer/mamba/tags?page=1&page_size=25&ordering=last_updated"
+          } > release_body.txt
+
       - name: Create Release
         if: steps.check_release.outputs.exists == 'false'
         id: create_release
@@ -181,11 +193,6 @@ jobs:
         with:
           tag_name: ${{ steps.generate_release_tag.outputs.tag }}
           release_name: Release ${{ steps.generate_release_tag.outputs.tag }}
-          body: |
-            Docker Images built on $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-            
-            $(cat /tmp/all-versions/info.txt)
-            
-            Docker Hub: https://hub.docker.com/r/andgineer/mamba/tags?page=1&page_size=25&ordering=-last_updated
+          body_path: release_body.txt
           draft: false
           prerelease: false
