@@ -17,12 +17,16 @@ on:
 
 env:
   DEFAULT_MAMBA_VERSION: 'latest'
+  PYTHON_VERSIONS: '["3.12", "3.13"]'
+  DEFAULT_PYTHON: '3.13'
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        python_version: ${{ fromJson(env.PYTHON_VERSIONS) }}
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,9 +50,9 @@ jobs:
         with:
           context: ./
           file: ./Dockerfile
-          build-args: PYTHON_VERSION=3.13
+          build-args: PYTHON_VERSION=${{ matrix.python_version }}
           push: false
-          tags: temp-mamba:latest
+          tags: temp-mamba-${{ matrix.python_version }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           load: true
@@ -56,59 +60,66 @@ jobs:
       - name: Get Mamba version
         id: mamba_version
         run: |
-          MAMBA_VERSION=$(docker run --rm temp-mamba:latest bash -c "/opt/conda/bin/mamba --version 2>/dev/null")
+          MAMBA_VERSION=$(docker run --rm temp-mamba-${{ matrix.python_version }}:latest bash -c "/opt/conda/bin/mamba --version 2>/dev/null")
           if [ -z "$MAMBA_VERSION" ]; then
-            MAMBA_VERSION=$(docker run --rm temp-mamba:latest bash -c "conda list mamba" | grep "^mamba " | awk '{print $2}' | head -1)
+            MAMBA_VERSION=$(docker run --rm temp-mamba-${{ matrix.python_version }}:latest bash -c "conda list mamba" | grep "^mamba " | awk '{print $2}' | head -1)
           fi
           if [ -z "$MAMBA_VERSION" ]; then
             MAMBA_VERSION="0.0.0"
             echo "Warning: Could not detect Mamba version, using default: ${MAMBA_VERSION}"
           fi
-          docker rmi temp-mamba:latest
+          docker rmi temp-mamba-${{ matrix.python_version }}:latest
           echo "version=${MAMBA_VERSION}" >> $GITHUB_OUTPUT
-          echo "Detected Mamba version: ${MAMBA_VERSION}"
+          echo "Detected Mamba version for Python ${{ matrix.python_version }}: ${MAMBA_VERSION}"
+          
+          # Save version info for release
+          mkdir -p /tmp/versions
+          echo "Python ${{ matrix.python_version }}: ${MAMBA_VERSION}" >> /tmp/versions/info.txt
+
 
       - name: Generate tags
         id: tags
         run: |
           MAMBA_VERSION=${{ steps.mamba_version.outputs.version }}
-          TAGS_312="${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.12"
-          TAGS_313="${{ secrets.DOCKER_HUB_USERNAME }}/mamba:3.13,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:latest"
+          PYTHON_VERSION=${{ matrix.python_version }}
+          
+          # Base tags
+          TAGS="${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${PYTHON_VERSION}"
+          
+          # Add latest tag only for default Python version
+          if [[ "${PYTHON_VERSION}" == "${{ env.DEFAULT_PYTHON }}" ]]; then
+            TAGS="${TAGS},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:latest"
+          fi
           
           # Add mamba version tags
-          TAGS_312="${TAGS_312},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:mamba-${MAMBA_VERSION}-py3.12"
-          TAGS_313="${TAGS_313},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:mamba-${MAMBA_VERSION}-py3.13,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:mamba-${MAMBA_VERSION}"
+          TAGS="${TAGS},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:mamba-${MAMBA_VERSION}-py${PYTHON_VERSION}"
+          
+          # Add mamba version without python suffix only for default Python version
+          if [[ "${PYTHON_VERSION}" == "${{ env.DEFAULT_PYTHON }}" ]]; then
+            TAGS="${TAGS},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:mamba-${MAMBA_VERSION}"
+          fi
           
           # Add git tag if this is a tagged release
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
             TAG_NAME=${GITHUB_REF#refs/tags/}
-            TAGS_312="${TAGS_312},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${TAG_NAME}-py3.12"
-            TAGS_313="${TAGS_313},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${TAG_NAME}-py3.13,${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${TAG_NAME}"
+            TAGS="${TAGS},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${TAG_NAME}-py${PYTHON_VERSION}"
+            if [[ "${PYTHON_VERSION}" == "${{ env.DEFAULT_PYTHON }}" ]]; then
+              TAGS="${TAGS},${{ secrets.DOCKER_HUB_USERNAME }}/mamba:${TAG_NAME}"
+            fi
           fi
           
-          echo "tags_312=${TAGS_312}" >> $GITHUB_OUTPUT
-          echo "tags_313=${TAGS_313}" >> $GITHUB_OUTPUT
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "Generated tags for Python ${PYTHON_VERSION}: ${TAGS}"
 
-      - name: Build and push to docker hub for Python 3.12
-        uses: docker/build-push-action@v5
-        with:
-          context: ./
-          file: ./Dockerfile
-          build-args: PYTHON_VERSION=3.12
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.tags.outputs.tags_312 }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push to docker hub for Python 3.13
+      - name: Build and push to docker hub
         id: build
         uses: docker/build-push-action@v5
         with:
           context: ./
           file: ./Dockerfile
-          build-args: PYTHON_VERSION=3.13
+          build-args: PYTHON_VERSION=${{ matrix.python_version }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.tags.outputs.tags_313 }}
+          tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: |-
@@ -118,12 +129,40 @@ jobs:
       - name: Image digest
         if: github.event_name != 'pull_request'
         run: echo ${{ steps.build.outputs.digest }}
+        
+      - name: Upload version info
+        uses: actions/upload-artifact@v4
+        with:
+          name: versions-${{ matrix.python_version }}
+          path: /tmp/versions/info.txt
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Download version info
+        uses: actions/download-artifact@v4
+        with:
+          pattern: versions-*
+          path: /tmp/all-versions
+          merge-multiple: true
+
+      - name: Generate release tag
+        id: generate_release_tag
+        run: |
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          echo "tag=release-${TIMESTAMP}" >> $GITHUB_OUTPUT
+          echo "Generated release tag: release-${TIMESTAMP}"
 
       - name: Check if release exists
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push'
         id: check_release
         run: |
-          TAG_NAME="mamba-${{ steps.mamba_version.outputs.version }}"
+          TAG_NAME="${{ steps.generate_release_tag.outputs.tag }}"
           if gh release view "${TAG_NAME}" >/dev/null 2>&1; then
             echo "Release ${TAG_NAME} already exists, skipping creation"
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -135,23 +174,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
-        if: github.ref == 'refs/heads/master' && github.event_name == 'push' && steps.check_release.outputs.exists == 'false'
+        if: steps.check_release.outputs.exists == 'false'
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: mamba-${{ steps.mamba_version.outputs.version }}
-          release_name: Release mamba-${{ steps.mamba_version.outputs.version }}
+          tag_name: ${{ steps.generate_release_tag.outputs.tag }}
+          release_name: Release ${{ steps.generate_release_tag.outputs.tag }}
           body: |
-            Release for Mamba version ${{ steps.mamba_version.outputs.version }}
+            Docker Images built on $(date -u +"%Y-%m-%d %H:%M:%S UTC")
             
-            Docker Images:
-            - https://hub.docker.com/r/andgineer/mamba/tags?page=&page_size=&ordering=&name=mamba-${{ steps.mamba_version.outputs.version }}
+            $(cat /tmp/all-versions/info.txt)
             
-            Available tags:
-            - `mamba-${{ steps.mamba_version.outputs.version }}` (Python 3.13, latest)
-            - `mamba-${{ steps.mamba_version.outputs.version }}-py3.13` (Python 3.13)
-            - `mamba-${{ steps.mamba_version.outputs.version }}-py3.12` (Python 3.12)
+            Docker Hub: https://hub.docker.com/r/andgineer/mamba/tags?page=1&page_size=25&ordering=-last_updated
           draft: false
           prerelease: false
