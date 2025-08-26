@@ -17,7 +17,6 @@ on:
 
 env:
   DEFAULT_MAMBA_VERSION: 'latest'
-  PYTHON_VERSIONS: '["3.12", "3.13"]'
   DEFAULT_PYTHON: '3.13'
 
 jobs:
@@ -25,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: ${{ fromJson(env.PYTHON_VERSIONS) }}
+        python_version: ["3.12", "3.13"]
     
     steps:
       - name: Checkout
