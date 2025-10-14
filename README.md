@@ -1,26 +1,30 @@
 [![Docker Automated build](https://img.shields.io/docker/image-size/andgineer/mamba)](https://hub.docker.com/r/andgineer/mamba)
 
-## Fast Scientific Anaconda/Mamba Docker Container
-This [Docker image](https://hub.docker.com/r/andgineer/mamba) provides a lightweight scientific Python environment 
-based on [Mamba](https://github.com/mamba-org/mamba), 
-a fast, robust C++ reimplementation of the Conda package manager.
+# Accelerated Conda dependency resolver in a secure Docker container
 
-### Features
+A lightweight [Docker image](https://hub.docker.com/r/andgineer/mamba) that pairs the Conda ecosystem with [Mamba](https://github.com/mamba-org/mamba) for fast, reproducible scientific Python environments.
 
-- Built on Mamba for significantly faster package management compared to Conda
-- Non-root user setup for enhanced security in production environments
-- Compatible with the Anaconda package ecosystem
-- Optimized for scientific computing with Python
+## Features
+- Optimized dependency resolution via Mamba with lightning-fast C++ core.
+- Ships with a non-root user for safer production deployments.
+- Provides Python 3.12 and 3.13 variants with consistent tooling (numpy, pandas, scikit-learn, boto3, requests, pyarrow, pyyaml).
 
-### Usage
+## Quick Start
+```bash
+docker run --rm -it andgineer/mamba python --version
+```
+Check the default toolchain:
+```bash
+docker run --rm -it andgineer/mamba bash -lc "mamba --version && conda list"
+```
 
-    docker run --rm -it andgineer/mamba python --version
+## Tags
+- `latest`: Matches the default Python release tracked by CI (currently 3.13).
+- `3.x`: Pin a specific Python minor (for example `3.12`, `3.13`).
+- `mamba-<version>` / `mamba-<version>-py<python>`: Сombinations of Mamba and Python versions (e.g., `mamba-1.4.3-py3.12`).
 
-### Available Tags
+## Security Notes
+The image creates and runs as `mamba-user`, avoiding root by default. Extend the image using the same user or explicit `USER` instructions to preserve that model.
 
-- latest: Latest stable Anaconda Python version compatible with Pandas
-- 3.x: Specific Python version tags (e.g., 3.9, 3.10)
-
-### Security
-The container runs as a non-root user by default, making it suitable for production environments and 
-following security best practices.
+## Additional Resources
+- Docker Hub: https://hub.docker.com/r/andgineer/mamba
